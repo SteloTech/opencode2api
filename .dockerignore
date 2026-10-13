@@ -7,6 +7,10 @@
 !go.sum
 !webui/
 !webui/**
+!webui-next/
+!webui-next/**
+webui-next/node_modules/
+webui-next/dist/
 !config.example.json
 !docker-entrypoint.sh
 !Dockerfile
