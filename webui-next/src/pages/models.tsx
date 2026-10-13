@@ -17,6 +17,16 @@ const rotationReasons: Record<string, string> = {
   success: '成功', client_canceled: '调用方取消', quota_or_rate_limit: '额度不足 / 限流', transport_error: '连接错误', first_output_timeout: '首个输出超时', stream_error: '输出中断', response_read_error: '读取响应失败', response_conversion_error: '响应解析或转换失败', request_conversion_error: '请求转换失败', upstream_error: '上游错误',
 }
 
+const availabilityReasons: Record<string, string> = {
+  probe_succeeded: '探测成功',
+  http_403: '上游拒绝探测',
+  http_401: '上游要求认证',
+  http_429: '上游限流',
+  model_unavailable: '模型不可用',
+  probe_timeout: '探测超时',
+  transport_error: '网络错误',
+}
+
 function normalizeRotation(data: RotationData): RotationData {
   return {
     ...data,
@@ -147,19 +157,21 @@ export function ModelsPage({ context }: { context: AppContext }) {
         <TabsContent value="availability" className="mt-4">
           <SectionCard title="免费模型探测" description="检查名称含 free 或元数据零价格且未弃用的模型。手动控制的模型保持启用且不再自动探测。" actions={<Button variant="outline" size="sm" onClick={loadAvailability} disabled={availabilityLoading}>{availabilityLoading ? '刷新中…' : '刷新状态'}</Button>}>
             {availabilityError ? <p className="mb-3 text-sm text-destructive">{availabilityError}</p> : null}
-            <TableShell columns={['模型', '状态', '原因 / 通道', '控制', 'auto 强度', '上次探测', '下次探测', '操作']}>
+            <TableShell className="shadow-sm" tableClassName="min-w-[1080px]" columns={['模型', '状态', '原因 / 通道', '控制', 'auto 强度', '上次探测', '下次探测', '操作']}>
               {availability.length ? availability.map((item) => (
                 <tr key={item.model}>
                   <td className="font-mono">{item.model}</td>
-                  <td><StatusBadge tone={item.disabled ? 'danger' : 'success'}>{item.disabled ? '已禁用' : '已启用'}</StatusBadge></td>
-                  <td>{[item.channel, item.reason].filter(Boolean).join(' / ') || '待探测'}</td>
-                  <td><StatusBadge tone={item.manual ? 'warning' : 'neutral'}>{item.manual ? '手动' : '自动'}</StatusBadge></td>
+                  <td><StatusBadge tone={item.disabled ? 'danger' : item.reason === 'probe_succeeded' ? 'success' : 'warning'}>{item.disabled ? '已禁用' : item.reason === 'probe_succeeded' ? '探测成功' : '探测未确认'}</StatusBadge></td>
+                  <td className="max-w-[220px] truncate">{[item.channel, availabilityReasons[item.reason || ''] || item.reason].filter(Boolean).join(' / ') || '待探测'}</td>
+                  <td><StatusBadge tone={item.manual ? 'warning' : 'neutral'}>{item.manual ? '手动锁定' : '自动探测'}</StatusBadge></td>
                   <td>{item.auto_effort?.effort ? `${item.auto_effort.effort}（${localTime(item.effort_checked_at)}）` : '未验证'}</td>
-                  <td>{localTime(item.checked_at)}</td>
-                  <td>{item.manual ? '手动控制' : localTime(item.next_check)}</td>
-                  <td className="space-x-1 whitespace-nowrap">
-                    <Button variant="ghost" size="xs" disabled={!item.disabled} onClick={async () => { await context.request('/api/models/restore', { method: 'POST', body: JSON.stringify({ model: item.model }) }); await loadAvailability(); await context.loadDebug(); }}>恢复启用</Button>
-                    <Button variant="outline" size="xs" onClick={async () => { await context.request('/api/models/manual', { method: 'POST', body: JSON.stringify({ model: item.model, manual: !item.manual }) }); await loadAvailability(); await context.loadDebug(); }}>{item.manual ? '切回自动' : '切为手动'}</Button>
+                  <td className="font-mono text-xs">{localTime(item.checked_at)}</td>
+                  <td className="font-mono text-xs">{item.manual ? '手动控制' : localTime(item.next_check)}</td>
+                  <td className="whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="xs" disabled={!item.disabled} onClick={async () => { await context.request('/api/models/restore', { method: 'POST', body: JSON.stringify({ model: item.model }) }); await loadAvailability(); await context.loadDebug(); }}>恢复启用</Button>
+                      <Button variant="outline" size="xs" onClick={async () => { await context.request('/api/models/manual', { method: 'POST', body: JSON.stringify({ model: item.model, manual: !item.manual }) }); await loadAvailability(); await context.loadDebug(); }}>{item.manual ? '切回自动' : '切为手动'}</Button>
+                    </div>
                   </td>
                 </tr>
               )) : <EmptyTable colSpan={8}>当前模型目录中没有符合免费资格的模型。</EmptyTable>}

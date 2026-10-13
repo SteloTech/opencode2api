@@ -4,15 +4,17 @@ import { cn } from '@/lib/utils'
 export function TableShell({
   columns,
   className,
+  tableClassName,
   children,
 }: {
   columns: string[]
   className?: string
+  tableClassName?: string
   children: React.ReactNode
 }) {
   return (
     <div className={cn('overflow-x-auto rounded-xl border', className)}>
-      <Table>
+      <Table className={tableClassName}>
         <TableHeader>
           <TableRow>
             {columns.map((column) => (
