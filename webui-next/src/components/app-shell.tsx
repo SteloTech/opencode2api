@@ -25,7 +25,7 @@ export function AppShell({ active, onNavigate, title, description, version, onRe
   return (
     <SidebarProvider>
       <div className="min-h-svh w-full">
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible="icon" className="z-20">
           <SidebarHeader className="px-4 py-5">
             <div className="flex items-center gap-3">
               <Avatar className="size-9 rounded-lg"><AvatarFallback className="rounded-lg bg-primary text-primary-foreground">O2</AvatarFallback></Avatar>
@@ -44,8 +44,8 @@ export function AppShell({ active, onNavigate, title, description, version, onRe
             <div className="font-mono text-xs">{version ? `version ${version}` : 'version —'}</div>
           </SidebarFooter>
         </Sidebar>
-        <main className="min-h-svh border-l">
-          <header className="sticky top-0 z-10 border-b bg-background/95 px-4 py-3 backdrop-blur">
+        <main className="relative z-30 min-h-svh border-l bg-background">
+          <header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur">
             <div className="flex items-center gap-3">
               <SidebarTrigger className="md:hidden" />
               <div className="min-w-0 flex-1"><h1 className="truncate text-lg font-semibold">{title}</h1><p className="truncate text-xs text-muted-foreground">{description}</p></div>
