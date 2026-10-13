@@ -25,7 +25,7 @@ export function AppShell({ active, onNavigate, title, description, version, onRe
   return (
     <SidebarProvider>
       <div className="min-h-svh w-full">
-        <Sidebar>
+        <Sidebar collapsible="icon">
           <SidebarHeader className="px-4 py-5">
             <div className="flex items-center gap-3">
               <Avatar className="size-9 rounded-lg"><AvatarFallback className="rounded-lg bg-primary text-primary-foreground">O2</AvatarFallback></Avatar>
