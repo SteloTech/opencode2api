@@ -86,6 +86,9 @@ func (a *Server) staticHandler() http.Handler {
 				r.URL.Path = "/"
 			}
 		}
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		}
 		files.ServeHTTP(w, r)
 	})
 }
