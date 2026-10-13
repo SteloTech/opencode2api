@@ -86,6 +86,15 @@ func (m *Manager) Configure(cfg config.RotationConfig) {
 			m.state.Groups = append(m.state.Groups, &Group{ID: id})
 		}
 		g := m.state.Groups[i]
+		if g.Order == nil {
+			g.Order = []string{}
+		}
+		if g.Available == nil {
+			g.Available = map[string]bool{}
+		}
+		if g.Switches == nil {
+			g.Switches = []Switch{}
+		}
 		previous := m.cfg.SOTA
 		if i == 1 {
 			previous = m.cfg.Sweet
@@ -167,6 +176,29 @@ func (m *Manager) Snapshot() Snapshot {
 	b, _ := json.Marshal(m.state)
 	var s Snapshot
 	_ = json.Unmarshal(b, &s)
+	if s.Groups == nil {
+		s.Groups = []*Group{}
+	}
+	if s.Attempts == nil {
+		s.Attempts = []Attempt{}
+	}
+	for _, g := range s.Groups {
+		if g == nil {
+			continue
+		}
+		if g.Order == nil {
+			g.Order = []string{}
+		}
+		if g.Paused == nil {
+			g.Paused = map[string]time.Time{}
+		}
+		if g.Available == nil {
+			g.Available = map[string]bool{}
+		}
+		if g.Switches == nil {
+			g.Switches = []Switch{}
+		}
+	}
 	return s
 }
 func (m *Manager) group(id string) *Group {

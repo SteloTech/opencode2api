@@ -17,6 +17,20 @@ const rotationReasons: Record<string, string> = {
   success: '成功', client_canceled: '调用方取消', quota_or_rate_limit: '额度不足 / 限流', transport_error: '连接错误', first_output_timeout: '首个输出超时', stream_error: '输出中断', response_read_error: '读取响应失败', response_conversion_error: '响应解析或转换失败', request_conversion_error: '请求转换失败', upstream_error: '上游错误',
 }
 
+function normalizeRotation(data: RotationData): RotationData {
+  return {
+    ...data,
+    groups: (data.groups || []).map((group) => ({
+      ...group,
+      order: group.order || [],
+      paused: group.paused || {},
+      available: group.available || {},
+      switches: group.switches || [],
+    })),
+    attempts: data.attempts || [],
+  }
+}
+
 export function ModelsPage({ context }: { context: AppContext }) {
   const [quota, setQuota] = useState<QuotaData | null>(null)
   const [quotaAccount, setQuotaAccount] = useState('')
@@ -33,7 +47,7 @@ export function ModelsPage({ context }: { context: AppContext }) {
     try { setQuota(await context.request<QuotaData>('/api/model-quotas')) } catch (error) { toast.error((error as Error).message) } finally { setQuotaLoading(false) }
   }
   const loadRotation = async () => {
-    const data = await context.request<RotationData>('/api/rotation')
+    const data = normalizeRotation(await context.request<RotationData>('/api/rotation'))
     setRotation(data)
     setRotationTimeout(String(data.first_output_seconds))
   }
@@ -41,9 +55,9 @@ export function ModelsPage({ context }: { context: AppContext }) {
     setAvailabilityLoading(true)
     setAvailabilityError('')
     try {
-      const data = await context.request<{ models: typeof availability }>('/api/models/availability')
-      setAvailability(data.models)
-      context.setAvailability(data.models)
+      const data = await context.request<{ models?: typeof availability }>('/api/models/availability')
+      setAvailability(data.models || [])
+      context.setAvailability(data.models || [])
     } catch (error) { setAvailabilityError((error as Error).message) } finally { setAvailabilityLoading(false) }
   }
 
@@ -51,7 +65,8 @@ export function ModelsPage({ context }: { context: AppContext }) {
   useEffect(() => { void loadRotation().catch((error) => toast.error((error as Error).message)) }, [])
   useEffect(() => { void loadAvailability() }, [])
 
-  const account = quota?.accounts.find((item) => item.id === quotaAccount) || quota?.accounts[0]
+  const accounts = quota?.accounts || []
+  const account = accounts.find((item) => item.id === quotaAccount) || accounts[0]
   const stale = account?.status === 'stale'
   const filteredModels = (quota?.models || []).filter((model) => model.id.toLowerCase().includes(quotaSearch.toLowerCase()))
   const windows: Array<readonly [key: 'rolling' | 'weekly' | 'monthly', label: string]> = [['rolling', '5 小时窗口'], ['weekly', '每周窗口'], ['monthly', '每月窗口']]
@@ -78,7 +93,7 @@ export function ModelsPage({ context }: { context: AppContext }) {
   }
 
   const selectCurrent = async (groupId: string, model: string) => {
-    const data = await context.request<RotationData>('/api/rotation/current', { method: 'POST', body: JSON.stringify({ group: groupId, model }) })
+    const data = normalizeRotation(await context.request<RotationData>('/api/rotation/current', { method: 'POST', body: JSON.stringify({ group: groupId, model }) }))
     setRotation((current) => current ? { ...current, groups: current.groups.map((group) => {
       const live = data.groups.find((item) => item.id === group.id)
       return live ? { ...group, current: live.current, paused: live.paused, switches: live.switches } : group
