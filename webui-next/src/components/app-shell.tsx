@@ -43,7 +43,7 @@ export function AppShell({ active, onNavigate, title, description, version, onRe
           <div className="font-mono text-xs">{version ? `version ${version}` : 'version —'}</div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center gap-3">
             <SidebarTrigger />

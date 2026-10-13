@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from '@/components/ui/table'
 import { useMemo, useState } from 'react'
 import type { AppContext } from '@/App'
 import { EmptyTable, TableShell } from '@/components/table-shell'
@@ -60,12 +61,12 @@ export function ObservabilityPage({ context }: { context: AppContext }) {
             <SectionCard title="模型排行" description="按 total_tokens 排序。">
               <TableShell columns={['模型', '输入', '输出', '总量']}>
                 {modelRows.length ? modelRows.map(([model, value]) => (
-                  <tr key={model}>
-                    <td className="font-mono">{model}</td>
-                    <td>{numberFormat(value.input_tokens)}</td>
-                    <td>{numberFormat(value.output_tokens)}</td>
-                    <td>{numberFormat(value.total_tokens)}</td>
-                  </tr>
+                  <TableRow key={model}>
+                    <TableCell className="font-mono">{model}</TableCell>
+                    <TableCell>{numberFormat(value.input_tokens)}</TableCell>
+                    <TableCell>{numberFormat(value.output_tokens)}</TableCell>
+                    <TableCell>{numberFormat(value.total_tokens)}</TableCell>
+                  </TableRow>
                 )) : <EmptyTable colSpan={4}>尚无 Token 用量</EmptyTable>}
               </TableShell>
             </SectionCard>

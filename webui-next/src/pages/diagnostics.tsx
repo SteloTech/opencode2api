@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from '@/components/ui/table'
 import { useMemo, useState } from 'react'
 import type { AppContext } from '@/App'
 import { CodeBlock } from '@/components/code-block'
@@ -174,14 +175,14 @@ export function DiagnosticsPage({ context }: { context: AppContext }) {
                   const eligibility = item.anonymous_eligibility || {}
                   const plan = [...(item.anonymous ? ['anonymous'] : []), ...(item.key_tiers || [])]
                   return (
-                    <tr key={item.model}>
-                      <td className="font-mono">{item.model}</td>
-                      <td>{item.native_protocol} · {item.protocol_source}</td>
-                      <td className={item.route_error ? 'text-destructive' : undefined}>{item.route_error || (plan.length ? plan.join(' → ') : '—')}</td>
-                      <td><StatusBadge tone={eligibility.allowed ? 'success' : 'warning'}>{eligibility.allowed ? '允许' : '拒绝'}</StatusBadge></td>
-                      <td>{eligibility.source || '—'}</td>
-                      <td className="font-mono">{eligibility.input_cost ?? '?'} / {eligibility.output_cost ?? '?'}</td>
-                    </tr>
+                    <TableRow key={item.model}>
+                      <TableCell className="font-mono">{item.model}</TableCell>
+                      <TableCell>{item.native_protocol} · {item.protocol_source}</TableCell>
+                      <TableCell className={item.route_error ? 'text-destructive' : undefined}>{item.route_error || (plan.length ? plan.join(' → ') : '—')}</TableCell>
+                      <TableCell><StatusBadge tone={eligibility.allowed ? 'success' : 'warning'}>{eligibility.allowed ? '允许' : '拒绝'}</StatusBadge></TableCell>
+                      <TableCell>{eligibility.source || '—'}</TableCell>
+                      <TableCell className="font-mono">{eligibility.input_cost ?? '?'} / {eligibility.output_cost ?? '?'}</TableCell>
+                    </TableRow>
                   )
                 })
               ) : <EmptyTable colSpan={6}>没有匹配模型</EmptyTable>}
@@ -202,17 +203,17 @@ export function DiagnosticsPage({ context }: { context: AppContext }) {
           <SectionCard title="请求路由" description="每个请求最终实际使用的 Key 尾码或 anonymous；最多展示最近 100 条。">
             <TableShell columns={['时间', 'Request ID', '模型', 'Tier', '通道', 'Key 尾码', '尝试', '状态', '耗时']}>
               {(monitor?.upstream?.requests || []).slice(-100).reverse().map((request) => (
-                <tr key={`${request.request_id}-${request.time}`}>
-                  <td className="whitespace-nowrap">{localClock(request.time)}</td>
-                  <td className="font-mono">{request.request_id}</td>
-                  <td className="font-mono">{request.model}</td>
-                  <td>{request.tier || '—'}</td>
-                  <td>{request.channel}</td>
-                  <td className="font-mono">{request.key_id || '—'}</td>
-                  <td>{request.attempts}</td>
-                  <td><StatusBadge tone={request.success ? 'success' : 'danger'}>{request.status || request.outcome}</StatusBadge></td>
-                  <td>{request.duration_ms} ms</td>
-                </tr>
+                <TableRow key={`${request.request_id}-${request.time}`}>
+                  <TableCell className="whitespace-nowrap">{localClock(request.time)}</TableCell>
+                  <TableCell className="font-mono">{request.request_id}</TableCell>
+                  <TableCell className="font-mono">{request.model}</TableCell>
+                  <TableCell>{request.tier || '—'}</TableCell>
+                  <TableCell>{request.channel}</TableCell>
+                  <TableCell className="font-mono">{request.key_id || '—'}</TableCell>
+                  <TableCell>{request.attempts}</TableCell>
+                  <TableCell><StatusBadge tone={request.success ? 'success' : 'danger'}>{request.status || request.outcome}</StatusBadge></TableCell>
+                  <TableCell>{request.duration_ms} ms</TableCell>
+                </TableRow>
               ))}
               {!monitor?.upstream?.requests?.length ? <EmptyTable colSpan={9}>尚无请求路由</EmptyTable> : null}
             </TableShell>
@@ -220,16 +221,16 @@ export function DiagnosticsPage({ context }: { context: AppContext }) {
           <SectionCard title="上游尝试" description="Key 尾码、匿名通道与脱敏代理节点；最多展示最近 100 条。">
             <TableShell columns={['时间', 'Request ID', '模型', '通道', 'Key 尾码', '代理节点', '状态', '耗时']}>
               {(monitor?.upstream?.recent || []).slice(-100).reverse().map((attempt) => (
-                <tr key={`${attempt.request_id}-${attempt.time}-${attempt.tier}-${attempt.key_id}`}>
-                  <td className="whitespace-nowrap">{localClock(attempt.time)}</td>
-                  <td className="font-mono">{attempt.request_id}</td>
-                  <td className="font-mono">{attempt.model}</td>
-                  <td>{attempt.tier} / {attempt.channel}</td>
-                  <td className="font-mono">{attempt.key_id}</td>
-                  <td>{attempt.proxy_node || '—'}</td>
-                  <td><StatusBadge tone={attempt.success ? 'success' : 'danger'}>{attempt.status || attempt.outcome}</StatusBadge></td>
-                  <td>{attempt.duration_ms} ms</td>
-                </tr>
+                <TableRow key={`${attempt.request_id}-${attempt.time}-${attempt.tier}-${attempt.key_id}`}>
+                  <TableCell className="whitespace-nowrap">{localClock(attempt.time)}</TableCell>
+                  <TableCell className="font-mono">{attempt.request_id}</TableCell>
+                  <TableCell className="font-mono">{attempt.model}</TableCell>
+                  <TableCell>{attempt.tier} / {attempt.channel}</TableCell>
+                  <TableCell className="font-mono">{attempt.key_id}</TableCell>
+                  <TableCell>{attempt.proxy_node || '—'}</TableCell>
+                  <TableCell><StatusBadge tone={attempt.success ? 'success' : 'danger'}>{attempt.status || attempt.outcome}</StatusBadge></TableCell>
+                  <TableCell>{attempt.duration_ms} ms</TableCell>
+                </TableRow>
               ))}
               {!monitor?.upstream?.recent?.length ? <EmptyTable colSpan={8}>尚无上游尝试</EmptyTable> : null}
             </TableShell>

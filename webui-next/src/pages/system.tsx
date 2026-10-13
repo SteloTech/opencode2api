@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from '@/components/ui/table'
 import { useEffect, useState } from 'react'
 import type { AppContext } from '@/App'
 import { CodeBlock } from '@/components/code-block'
@@ -174,14 +175,14 @@ export function SystemPage({ context }: { context: AppContext }) {
           <SectionCard title={`访问密钥（${keys.length} 个）`} description="此处管理本机访问权限。OpenCode Go 上游密钥仍在配置中管理。">
             <TableShell columns={['名称', '密钥尾码', '状态', '创建时间', '操作']}>
               {keys.length ? keys.map((key) => (
-                <tr key={key.id}>
-                  <td>{key.name}</td><td className="font-mono">{key.display}</td><td><StatusBadge tone={key.enabled ? 'success' : 'warning'}>{key.enabled ? '已启用' : '已停用'}</StatusBadge></td><td>{key.created_at ? localTime(key.created_at) : '已有配置'}</td>
-                  <td className="space-x-1 whitespace-nowrap">
+                <TableRow key={key.id}>
+                  <TableCell>{key.name}</TableCell><TableCell className="font-mono">{key.display}</TableCell><TableCell><StatusBadge tone={key.enabled ? 'success' : 'warning'}>{key.enabled ? '已启用' : '已停用'}</StatusBadge></TableCell><TableCell>{key.created_at ? localTime(key.created_at) : '已有配置'}</TableCell>
+                  <TableCell className="space-x-1 whitespace-nowrap">
                     <Button variant="ghost" size="xs" onClick={() => { setRenaming(key); setRenameValue(key.name) }}>重命名</Button>
                     <Button variant="ghost" size="xs" onClick={() => void updateKey(key.id, 'PATCH', { enabled: !key.enabled }).catch((error) => toast.error((error as Error).message))}>{key.enabled ? '停用' : '启用'}</Button>
                     <Button variant="ghost" size="xs" className="text-destructive" onClick={() => setDeleting(key)}>删除</Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )) : <EmptyTable colSpan={5}>暂无 API Key</EmptyTable>}
             </TableShell>
           </SectionCard>

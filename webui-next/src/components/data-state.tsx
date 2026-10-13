@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -19,11 +20,11 @@ export function LoadingGrid({ count = 4, className }: { count?: number; classNam
 
 export function EmptyRow({ colSpan, children }: { colSpan: number; children: React.ReactNode }) {
   return (
-    <tr>
-      <td colSpan={colSpan} className="h-24 text-center text-muted-foreground">
+    <TableRow>
+      <TableCell colSpan={colSpan} className="h-24 text-center text-muted-foreground">
         {children}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }
 

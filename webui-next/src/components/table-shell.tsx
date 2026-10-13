@@ -13,7 +13,11 @@ export function TableShell({
   children: React.ReactNode
 }) {
   return (
-    <div className={cn('overflow-x-auto rounded-xl border', className)}>
+    <div className={cn(
+      'min-w-0 rounded-xl border',
+      '[&_[data-slot=table-head]]:px-3 [&_[data-slot=table-cell]]:p-3',
+      className,
+    )}>
       <Table className={tableClassName}>
         <TableHeader>
           <TableRow>

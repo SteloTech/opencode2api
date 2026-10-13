@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from '@/components/ui/table'
 import { useEffect, useState } from 'react'
 import type { AppContext } from '@/App'
 import { EmptyTable, TableShell } from '@/components/table-shell'
@@ -144,12 +145,12 @@ export function ModelsPage({ context }: { context: AppContext }) {
           <SectionCard title={`可用模型（${filteredModels.length} / ${quota?.models.length || 0}）`} description="模型名称可直接填入 OPENAI_MODEL。额度列对应选定套餐，不代表每个模型拥有独立额度。" actions={<Input className="w-48" placeholder="搜索模型名称…" value={quotaSearch} onChange={(event) => setQuotaSearch(event.target.value)} />}>
             <TableShell columns={['模型名称', '上游协议', '5 小时剩余 · 共享', '本周剩余 · 共享', '本月剩余 · 共享', '操作']}>
               {filteredModels.length ? filteredModels.map((model) => (
-                <tr key={model.id}>
-                  <td className="font-mono">{model.id}</td>
-                  <td>{{ chat: 'Chat Completions', responses: 'Responses', anthropic: 'Messages' }[model.protocol] || model.protocol}</td>
-                  {windows.map(([id]) => <td key={id}>{account?.windows?.[id] ? `≈ ${account.windows[id].remaining_percent}%${stale ? '（历史）' : ''}` : '未知'}</td>)}
-                  <td><Button variant="ghost" size="xs" onClick={() => void navigator.clipboard.writeText(model.id).then(() => toast.success('已复制'))}>复制名称</Button></td>
-                </tr>
+                <TableRow key={model.id}>
+                  <TableCell className="font-mono">{model.id}</TableCell>
+                  <TableCell>{{ chat: 'Chat Completions', responses: 'Responses', anthropic: 'Messages' }[model.protocol] || model.protocol}</TableCell>
+                  {windows.map(([id]) => <TableCell key={id}>{account?.windows?.[id] ? `≈ ${account.windows[id].remaining_percent}%${stale ? '（历史）' : ''}` : '未知'}</TableCell>)}
+                  <TableCell><Button variant="ghost" size="xs" onClick={() => void navigator.clipboard.writeText(model.id).then(() => toast.success('已复制'))}>复制名称</Button></TableCell>
+                </TableRow>
               )) : <EmptyTable colSpan={6}>{quota?.models.length ? '没有匹配的模型' : '模型目录尚未就绪，请稍后刷新'}</EmptyTable>}
             </TableShell>
           </SectionCard>
@@ -157,23 +158,27 @@ export function ModelsPage({ context }: { context: AppContext }) {
         <TabsContent value="availability" className="mt-4">
           <SectionCard title="免费模型探测" description="检查名称含 free 或元数据零价格且未弃用的模型。手动控制的模型保持启用且不再自动探测。" actions={<Button variant="outline" size="sm" onClick={loadAvailability} disabled={availabilityLoading}>{availabilityLoading ? '刷新中…' : '刷新状态'}</Button>}>
             {availabilityError ? <p className="mb-3 text-sm text-destructive">{availabilityError}</p> : null}
-            <TableShell className="shadow-sm" tableClassName="min-w-[1080px]" columns={['模型', '状态', '原因 / 通道', '控制', 'auto 强度', '上次探测', '下次探测', '操作']}>
+            <TableShell
+              className="shadow-sm"
+              tableClassName="min-w-[1305px] table-fixed [&_th:nth-child(1)]:w-[220px] [&_th:nth-child(2)]:w-[145px] [&_th:nth-child(3)]:w-[220px] [&_th:nth-child(4)]:w-[120px] [&_th:nth-child(5)]:w-[120px] [&_th:nth-child(6)]:w-[145px] [&_th:nth-child(7)]:w-[145px] [&_th:nth-child(8)]:w-[190px] [&_td:nth-child(3)]:whitespace-normal [&_td:nth-child(6)]:whitespace-normal [&_td:nth-child(7)]:whitespace-normal"
+              columns={['模型', '状态', '原因 / 通道', '控制', 'auto 强度', '上次探测', '下次探测', '操作']}
+            >
               {availability.length ? availability.map((item) => (
-                <tr key={item.model}>
-                  <td className="font-mono">{item.model}</td>
-                  <td><StatusBadge tone={item.disabled ? 'danger' : item.reason === 'probe_succeeded' ? 'success' : 'warning'}>{item.disabled ? '已禁用' : item.reason === 'probe_succeeded' ? '探测成功' : '探测未确认'}</StatusBadge></td>
-                  <td className="max-w-[220px] truncate">{[item.channel, availabilityReasons[item.reason || ''] || item.reason].filter(Boolean).join(' / ') || '待探测'}</td>
-                  <td><StatusBadge tone={item.manual ? 'warning' : 'neutral'}>{item.manual ? '手动锁定' : '自动探测'}</StatusBadge></td>
-                  <td>{item.auto_effort?.effort ? `${item.auto_effort.effort}（${localTime(item.effort_checked_at)}）` : '未验证'}</td>
-                  <td className="font-mono text-xs">{localTime(item.checked_at)}</td>
-                  <td className="font-mono text-xs">{item.manual ? '手动控制' : localTime(item.next_check)}</td>
-                  <td className="whitespace-nowrap">
+                <TableRow key={item.model}>
+                  <TableCell className="font-mono whitespace-normal break-words">{item.model}</TableCell>
+                  <TableCell><StatusBadge tone={item.disabled ? 'danger' : item.reason === 'probe_succeeded' ? 'success' : 'warning'}>{item.disabled ? '已禁用' : item.reason === 'probe_succeeded' ? '探测成功' : '探测未确认'}</StatusBadge></TableCell>
+                  <TableCell className="whitespace-normal">{[item.channel, availabilityReasons[item.reason || ''] || item.reason].filter(Boolean).join(' / ') || '待探测'}</TableCell>
+                  <TableCell><StatusBadge tone={item.manual ? 'warning' : 'neutral'}>{item.manual ? '手动锁定' : '自动探测'}</StatusBadge></TableCell>
+                  <TableCell>{item.auto_effort?.effort ? `${item.auto_effort.effort}（${localTime(item.effort_checked_at)}）` : '未验证'}</TableCell>
+                  <TableCell className="font-mono text-xs leading-relaxed">{localTime(item.checked_at).split(" ").map((part, index) => <span key={index} className="block">{part}</span>)}</TableCell>
+                  <TableCell className="font-mono text-xs leading-relaxed">{(item.manual ? '手动控制' : localTime(item.next_check)).split(" ").map((part, index) => <span key={index} className="block">{part}</span>)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="xs" disabled={!item.disabled} onClick={async () => { await context.request('/api/models/restore', { method: 'POST', body: JSON.stringify({ model: item.model }) }); await loadAvailability(); await context.loadDebug(); }}>恢复启用</Button>
                       <Button variant="outline" size="xs" onClick={async () => { await context.request('/api/models/manual', { method: 'POST', body: JSON.stringify({ model: item.model, manual: !item.manual }) }); await loadAvailability(); await context.loadDebug(); }}>{item.manual ? '切回自动' : '切为手动'}</Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )) : <EmptyTable colSpan={8}>当前模型目录中没有符合免费资格的模型。</EmptyTable>}
             </TableShell>
           </SectionCard>
@@ -187,15 +192,15 @@ export function ModelsPage({ context }: { context: AppContext }) {
                   const until = group.paused?.[model]
                   const paused = until && new Date(until) > new Date()
                   const available = group.available?.[model]
-                  return <tr key={model}>
-                    <td>{index + 1}</td><td className="font-mono">{model}</td>
-                    <td>{!available ? '已下架 / 暂不可用' : paused ? `暂停至 ${localTime(until)}` : model === group.current ? '当前使用' : '可用'}</td>
-                    <td className="space-x-1 whitespace-nowrap">
+                  return <TableRow key={model}>
+                    <TableCell>{index + 1}</TableCell><TableCell className="font-mono">{model}</TableCell>
+                    <TableCell>{!available ? '已下架 / 暂不可用' : paused ? `暂停至 ${localTime(until)}` : model === group.current ? '当前使用' : '可用'}</TableCell>
+                    <TableCell className="space-x-1 whitespace-nowrap">
                       <Button variant="ghost" size="xs" onClick={() => move(groupIndex, index, -1)} disabled={index === 0}>上移</Button>
                       <Button variant="ghost" size="xs" onClick={() => move(groupIndex, index, 1)} disabled={index === group.order.length - 1}>下移</Button>
                       <Button variant="outline" size="xs" disabled={!available} onClick={() => void selectCurrent(group.id, model)}>设为当前</Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 })}
                 {!group.order.length ? <EmptyTable colSpan={4}>等待 Go 模型目录</EmptyTable> : null}
               </TableShell>
@@ -212,9 +217,9 @@ export function ModelsPage({ context }: { context: AppContext }) {
           <SectionCard title="最近请求尝试" description="调用分组别名后显示最近 100 次尝试。">
             <TableShell columns={['时间', '请求', '别名', '实际模型', '尝试', '结果']}>
               {(rotation?.attempts || []).slice().reverse().map((item) => (
-                <tr key={`${item.request}-${item.number}`}>
-                  <td>{localTime(item.time)}</td><td className="font-mono">{item.request}</td><td>{item.alias}</td><td className="font-mono">{item.model}</td><td>{item.number}</td><td>{rotationReasons[item.outcome] || item.outcome}</td>
-                </tr>
+                <TableRow key={`${item.request}-${item.number}`}>
+                  <TableCell>{localTime(item.time)}</TableCell><TableCell className="font-mono">{item.request}</TableCell><TableCell>{item.alias}</TableCell><TableCell className="font-mono whitespace-normal break-words">{item.model}</TableCell><TableCell>{item.number}</TableCell><TableCell>{rotationReasons[item.outcome] || item.outcome}</TableCell>
+                </TableRow>
               ))}
               {!rotation?.attempts?.length ? <EmptyTable colSpan={6}>暂无请求尝试</EmptyTable> : null}
             </TableShell>
