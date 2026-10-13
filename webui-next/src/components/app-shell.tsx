@@ -47,12 +47,11 @@ export function AppShell({ active, onNavigate, title, description, version, onRe
         <main className="relative z-30 min-h-svh border-l bg-background">
           <header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur">
             <div className="flex items-center gap-3">
-              <SidebarTrigger className="md:hidden" />
+              <SidebarTrigger />
               <div className="min-w-0 flex-1"><h1 className="truncate text-lg font-semibold">{title}</h1><p className="truncate text-xs text-muted-foreground">{description}</p></div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={onRefresh} disabled={busy}><RefreshCw className={cn('size-4', busy && 'animate-spin')} />刷新</Button>
                 <Button variant="ghost" size="sm" onClick={onLogout}>退出</Button>
-                <SidebarTrigger className="hidden md:flex" />
               </div>
             </div>
           </header>
