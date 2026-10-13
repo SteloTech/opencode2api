@@ -1,3 +1,13 @@
+FROM --platform=$BUILDPLATFORM node:22-alpine AS webui-builder
+
+WORKDIR /src/webui-next
+
+COPY webui-next/package.json webui-next/package-lock.json ./
+RUN npm ci --ignore-scripts
+
+COPY webui-next/ ./
+RUN npm run build
+
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 ARG TARGETOS
@@ -28,6 +38,7 @@ RUN apk add --no-cache ca-certificates su-exec tzdata \
     && chown -R opencode2api:opencode2api /app /var/lib/opencode2api
 
 COPY --from=builder /out/opencode2api /usr/local/bin/opencode2api
+COPY --from=webui-builder /src/webui-next/dist /app/webui-dist
 COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 COPY --chown=opencode2api:opencode2api config.example.json /app/config.example.json
 COPY LICENSE /usr/share/licenses/opencode2api/LICENSE
@@ -39,6 +50,7 @@ ENV CONFIG_PATH=/var/lib/opencode2api/config.json \
     CONFIG_SEED_PATH= \
     LISTEN_ADDRESS= \
     WEBUI_LISTEN_ADDRESS= \
+    WEBUI_ASSETS_DIR=/app/webui-dist \
     STATE_DIR=/var/lib/opencode2api
 
 WORKDIR /app

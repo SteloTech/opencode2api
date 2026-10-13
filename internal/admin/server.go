@@ -74,7 +74,7 @@ func (a *Server) Handler() http.Handler {
 }
 
 func (a *Server) staticHandler() http.Handler {
-	assets := webui.Assets
+	assets := webui.FS()
 	files := http.FileServer(http.FS(assets))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
