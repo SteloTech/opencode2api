@@ -120,3 +120,5 @@ export function ObservabilityPage({ context }: { context: AppContext }) {
     </PageShell>
   )
 }
+
+export default ObservabilityPage

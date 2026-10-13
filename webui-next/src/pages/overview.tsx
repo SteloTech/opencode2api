@@ -219,3 +219,5 @@ export function OverviewPage({ context }: { context: AppContext }) {
     </PageShell>
   )
 }
+
+export default OverviewPage

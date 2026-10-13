@@ -26,3 +26,34 @@ export function EmptyRow({ colSpan, children }: { colSpan: number; children: Rea
     </tr>
   )
 }
+
+export function WorkspaceSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+        <Skeleton className="h-8 w-24" />
+      </div>
+      <Skeleton className="h-10 w-96 max-w-full rounded-lg" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

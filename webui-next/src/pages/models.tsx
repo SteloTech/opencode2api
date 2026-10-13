@@ -197,3 +197,5 @@ export function ModelsPage({ context }: { context: AppContext }) {
     </PageShell>
   )
 }
+
+export default ModelsPage

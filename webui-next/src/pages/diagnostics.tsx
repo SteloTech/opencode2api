@@ -239,3 +239,5 @@ export function DiagnosticsPage({ context }: { context: AppContext }) {
     </PageShell>
   )
 }
+
+export default DiagnosticsPage

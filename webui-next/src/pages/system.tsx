@@ -18,6 +18,8 @@ import { toast } from 'sonner'
 import type { APIKey, Config, SecretItem } from '@/lib/types'
 import { localTime } from '@/lib/format'
 
+export default SystemPage
+
 type Draft = Required<Pick<Config, 'prefer' | 'listen' | 'server_keys' | 'zen_keys' | 'go_keys' | 'anonymous' | 'proxies' | 'proxyfile' | 'upstream' | 'retry' | 'models' | 'reasoning' | 'performance' | 'logging' | 'webui'>>
 
 export function SystemPage({ context }: { context: AppContext }) {

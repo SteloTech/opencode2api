@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { api, type ApiError } from '@/lib/api'
 import type { APIKey, AvailabilityModel, Config, DebugData, LogEvent, MonitorData, PlaygroundResult, QuotaData, RotationData, Session } from '@/lib/types'
 import { AppShell } from '@/components/app-shell'
+import { WorkspaceSkeleton } from '@/components/data-state'
 import { LoginPage } from '@/pages/login'
-import { DiagnosticsPage } from '@/pages/diagnostics'
-import { ModelsPage } from '@/pages/models'
-import { ObservabilityPage } from '@/pages/observability'
-import { OverviewPage } from '@/pages/overview'
-import { SystemPage } from '@/pages/system'
+const DiagnosticsPage = lazy(() => import('@/pages/diagnostics'))
+const ModelsPage = lazy(() => import('@/pages/models'))
+const ObservabilityPage = lazy(() => import('@/pages/observability'))
+const OverviewPage = lazy(() => import('@/pages/overview'))
+const SystemPage = lazy(() => import('@/pages/system'))
 
 const redirects: Record<string, string> = {
   overview: '/overview/status', guide: '/overview/checklist', access: '/overview/access', usage: '/observability/usage', playground: '/diagnostics/playground', diagnostics: '/diagnostics/routing', config: '/system/config', logs: '/observability/logs', account: '/system/account', 'model-quotas': '/models/catalog', 'api-keys': '/system/api-keys', rotation: '/models/rotation', availability: '/models/availability',
@@ -105,11 +106,13 @@ export default function App() {
   return (
     <TooltipProvider>
       <AppShell active={workspace} onNavigate={(next) => { history.replaceState(null, '', `#/${next}/status`); setPath(`/${next}/status`) }} title={meta.title} description={meta.description} version={monitor?.version} onRefresh={() => void refreshCore()} onLogout={() => void request('/api/auth/logout', { method: 'POST', body: '{}' }).finally(() => { setAuthenticated(false); setCsrf('') })} busy={busy}>
-        {workspace === 'overview' ? <OverviewPage context={context} /> : null}
-        {workspace === 'models' ? <ModelsPage context={context} /> : null}
-        {workspace === 'diagnostics' ? <DiagnosticsPage context={context} /> : null}
-        {workspace === 'observability' ? <ObservabilityPage context={context} /> : null}
-        {workspace === 'system' ? <SystemPage context={context} /> : null}
+        <Suspense fallback={<WorkspaceSkeleton />}>
+          {workspace === 'overview' ? <OverviewPage context={context} /> : null}
+          {workspace === 'models' ? <ModelsPage context={context} /> : null}
+          {workspace === 'diagnostics' ? <DiagnosticsPage context={context} /> : null}
+          {workspace === 'observability' ? <ObservabilityPage context={context} /> : null}
+          {workspace === 'system' ? <SystemPage context={context} /> : null}
+        </Suspense>
       </AppShell>
       <Toaster richColors position="top-right" />
     </TooltipProvider>
