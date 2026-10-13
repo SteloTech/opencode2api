@@ -202,9 +202,46 @@ jobs:
           provenance: mode=max
           sbom: true
 
+  container_archive:
+    name: Archive Linux amd64 image
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux amd64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: opencode2api:release
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.release_tag }}
+          cache-from: type=gha,scope=container-amd64
+          cache-to: type=gha,mode=max,scope=container-amd64
+
+      - name: Export image archive
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release_tag }}
+        run: docker save opencode2api:release | gzip -9 > "opencode2api_${RELEASE_TAG}_linux_amd64_image.tar.gz"
+
+      - name: Upload image archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode2api_linux_amd64_image
+          path: opencode2api_${{ needs.prepare.outputs.release_tag }}_linux_amd64_image.tar.gz
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: [prepare, build, container]
+    needs: [prepare, build, container, container_archive]
     runs-on: ubuntu-latest
     permissions:
       contents: write
