@@ -1,23 +1,26 @@
 FROM --platform=$BUILDPLATFORM node:22-alpine AS webui-builder
 
+ARG ALL_PROXY
+
 WORKDIR /src/webui-next
 
 COPY webui-next/package.json webui-next/package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" npm ci --ignore-scripts
 
 COPY webui-next/ ./
-RUN npm run build
+RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" npm run build
 
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=dev
+ARG ALL_PROXY
 
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" go mod download
 
 COPY . .
 
