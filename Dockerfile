@@ -5,7 +5,7 @@ ARG ALL_PROXY
 WORKDIR /src/webui-next
 
 COPY webui-next/package.json webui-next/package-lock.json ./
-RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" npm ci --ignore-scripts
+RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" npm install --ignore-scripts --no-audit --no-fund
 
 COPY webui-next/ ./
 RUN ALL_PROXY="$ALL_PROXY" all_proxy="$ALL_PROXY" npm run build
