@@ -9,6 +9,7 @@ opencode/
 *.log
 .tmp/
 .gocache/
+.gomodcache/
 *.models.catalog.json
 node_modules/
 coverage.out

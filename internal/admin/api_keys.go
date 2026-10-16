@@ -45,6 +45,30 @@ func (a *Server) handleListAPIKeys(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"keys": apiKeyViews(a.manager.Config())})
 }
 
+func (a *Server) handleRevealAPIKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	var input struct {
+		Password string `json:"password"`
+	}
+	if err := decodeAdminJSON(w, r, &input); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	cfg := a.manager.Config()
+	if !config.VerifyPassword(cfg.WebUI.PasswordHash, input.Password) {
+		writeAdminError(w, http.StatusForbidden, "verification_failed", "password verification failed")
+		return
+	}
+	for _, key := range cfg.ServerKeys {
+		if config.Fingerprint(key) == r.PathValue("id") {
+			a.logger.Info("API key revealed", "component", "auth", "event", "api_key_revealed", "client_ip", clientIP(r))
+			httpx.WriteJSON(w, http.StatusOK, map[string]string{"key": key})
+			return
+		}
+	}
+	writeAdminError(w, http.StatusNotFound, "key_not_found", "API Key 不存在，请刷新列表")
+}
+
 func validateKeyName(name string) error {
 	if name == "" || len([]rune(name)) > 80 {
 		return errors.New("名称需为 1–80 个字符")
