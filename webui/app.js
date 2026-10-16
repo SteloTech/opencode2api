@@ -1114,6 +1114,26 @@ function renderAPIKeys(keys) {
     actions.className = "key-actions";
     for (const [label, action] of [
       [
+        "查看",
+        async (button) => {
+          const password = prompt("请再次输入管理密码");
+          if (password === null) return;
+          button.disabled = true;
+          try {
+            const data = await api(`/api/api-keys/${encodeURIComponent(key.id)}/reveal`, {
+              method: "POST",
+              body: JSON.stringify({ password }),
+            });
+            $("#modal-content").textContent = data.key;
+            $("#modal").classList.remove("hidden");
+          } catch (error) {
+            toast(error.message, true);
+          } finally {
+            button.disabled = false;
+          }
+        },
+      ],
+      [
         "重命名",
         (button) => {
           const name = prompt("密钥名称", key.name);

@@ -19,17 +19,18 @@ export function ObservabilityPage({ context }: { context: AppContext }) {
   const [component, setComponent] = useState('')
   const [query, setQuery] = useState('')
   const [paused, setPaused] = useState(false)
+  const [pausedLogs, setPausedLogs] = useState<typeof logs>([])
 
   const series = monitor?.metrics?.series || []
   const maximum = Math.max(1, ...series.map((point) => point.total_tokens || 0))
   const modelRows = Object.entries(usage?.models || {}).sort((a, b) => (b[1].total_tokens || 0) - (a[1].total_tokens || 0)).slice(0, 15)
   const tierRows = Object.entries(usage?.tiers || {}).sort((a, b) => (b[1].total_tokens || 0) - (a[1].total_tokens || 0))
   const tierTotal = Math.max(1, ...tierRows.map(([, value]) => value.total_tokens || 0))
-  const filteredLogs = useMemo(() => logs.filter((item) => {
+  const filteredLogs = useMemo(() => (paused ? pausedLogs : logs).filter((item) => {
     if (level && item.level !== level) return false
     if (component && !(item.component || '').toLowerCase().includes(component.toLowerCase())) return false
     return !query || JSON.stringify(item).toLowerCase().includes(query.toLowerCase())
-  }).slice(-500), [component, level, logs, query])
+  }).slice(-500), [component, level, logs, query, paused, pausedLogs])
 
   return (
     <PageShell title="观测" description="查看 Token 使用趋势与实时结构化事件。">
@@ -86,7 +87,7 @@ export function ObservabilityPage({ context }: { context: AppContext }) {
           <SectionCard
             title="实时事件"
             description="来自进程内 Ring Buffer 的结构化 SSE。"
-            actions={<Button variant={paused ? 'default' : 'outline'} size="sm" onClick={() => setPaused((value) => !value)}>{paused ? '继续' : '暂停'}</Button>}
+            actions={<Button variant={paused ? 'default' : 'outline'} size="sm" onClick={() => { if (!paused) setPausedLogs(logs); setPaused((value) => !value) }}>{paused ? '继续' : '暂停'}</Button>}
           >
             <div className="grid gap-2 sm:grid-cols-3">
               <Select value={level || 'all'} onValueChange={(value) => setLevel(value === 'all' ? '' : value)}>

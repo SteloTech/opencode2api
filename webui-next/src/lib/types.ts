@@ -189,6 +189,7 @@ export interface UpstreamAttempt {
 }
 
 export interface LogEvent {
+  sequence?: number
   time: string
   level: string
   component?: string

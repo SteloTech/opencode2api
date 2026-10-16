@@ -84,17 +84,19 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
   useEffect(() => {
-    if (!authenticated || path !== '/observability/logs') return
+    if (!authenticated || path.split('/')[1] !== 'observability') return
     const source = new EventSource('/api/logs/stream')
-    source.onmessage = (event) => {
+    source.addEventListener('log', (event) => {
       if (event.data === 'ping') return
       try {
         setLogs((current) => {
-          const next = [...current, JSON.parse(event.data) as LogEvent]
+          const item = JSON.parse(event.data) as LogEvent
+          if (item.sequence && current.some((existing) => existing.sequence === item.sequence)) return current
+          const next = [...current, item]
           return next.length > 2000 ? next.slice(next.length - 2000) : next
         })
       } catch { /* ignore malformed event */ }
-    }
+    })
     source.addEventListener('gap', () => toast.error('较早日志已从内存清除'))
     return () => source.close()
   }, [authenticated, path])
