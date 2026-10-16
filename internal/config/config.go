@@ -64,6 +64,12 @@ type RetryConfig struct {
 type ModelsConfig struct {
 	RefreshSeconds int               `json:"refresh_seconds"`
 	Protocols      map[string]string `json:"protocols"`
+	// Context overrides the context window (in tokens) that /v1/models
+	// advertises for a model. OpenCode's capability catalog stays authoritative
+	// for everything else; this only corrects the published limit when it does
+	// not match what the upstream actually serves. The gateway never enforces
+	// the value, so it is purely a discovery hint for clients.
+	Context map[string]int `json:"context,omitempty"`
 }
 
 type LoggingConfig struct {
@@ -246,6 +252,14 @@ func Normalize(path string, cfg Config) (Config, error) {
 			return Config{}, fmt.Errorf("models.protocols contains invalid mapping %q: %q", model, protocol)
 		}
 	}
+	for model, window := range cfg.Models.Context {
+		if strings.TrimSpace(model) == "" {
+			return Config{}, errors.New("models.context must not contain an empty model ID")
+		}
+		if window < 1 {
+			return Config{}, fmt.Errorf("models.context[%q] must be a positive token count", model)
+		}
+	}
 	if err := normalizeReasoning(&cfg); err != nil {
 		return Config{}, err
 	}
@@ -345,6 +359,13 @@ func Clone(cfg Config) Config {
 			protocols[key] = value
 		}
 		cfg.Models.Protocols = protocols
+	}
+	if cfg.Models.Context != nil {
+		contexts := make(map[string]int, len(cfg.Models.Context))
+		for key, value := range cfg.Models.Context {
+			contexts[key] = value
+		}
+		cfg.Models.Context = contexts
 	}
 	if cfg.Reasoning.EffortByModel != nil {
 		efforts := make(map[string]string, len(cfg.Reasoning.EffortByModel))

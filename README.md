@@ -196,6 +196,20 @@ The gateway refreshes Zen/Go `/v1/models` and OpenCode's [capability catalog](ht
 
 Allowed protocol values are `chat`, `responses`, and `anthropic`. Models using unsupported native protocols are filtered from discovery unless overridden.
 
+Context windows also come from the capability catalog (filled from models.dev when missing). When the free lane actually serves a smaller window than published, `models.context` overrides the `context_window`/`context_length` that `/v1/models` advertises, per model ID, in tokens (positive integers):
+
+```json
+{
+  "models": {
+    "context": {
+      "glm-5.3-flash-free": 65536
+    }
+  }
+}
+```
+
+The override only affects discovery output; the gateway never enforces or truncates, so the upstream may still reject or drop oversized input. It wins over both the capability catalog and models.dev, and an empty map means no override. Measure the real window with the context probe below before setting it.
+
 Cost, deprecation, and model limits come from the official [OpenCode metadata endpoint](https://models.opencode.ai/api.json), refreshed every 24 hours. OpenCode's capability catalog remains authoritative for context and token limits; metadata `limit.context`, `limit.input`, and `limit.output` fill fields missing from that catalog. These limits are exposed by `/v1/models` as `context_window`/`context_length`, `max_input`, and `max_output` for discovery clients such as CLIProxyAPI and Pi. Metadata requests use a 30-second timeout per HTTP client. Refresh failures retain existing data.
 
 ### Anonymous access and fallback
@@ -231,7 +245,27 @@ Manual control also pauses effort discovery for `reasoning.effort=auto`; learned
 
 State survives restarts in `config.json.<upstream-fingerprint>.availability.json`, separated by the Zen upstream URL. The background scheduler checks for due models once per minute, skips manually controlled models, and probes the rest sequentially, with a 60-second timeout per lane. No channels available means no automatic disable.
 
-Administration endpoints (login required; writes also require CSRF): `GET /api/models/availability`, `POST /api/models/restore` with `{"model":"MODEL_ID"}` (restores and takes manual control), and `POST /api/models/manual` with `{"model":"MODEL_ID","manual":true|false}` to switch between manual and automatic control.
+### Context probe
+
+Published limits are only a claim: the free lane may actually serve a smaller window, or silently drop the overflow instead of erroring. The **Measure context** action next to each model on the WebUI **Free model availability** page bisects the input size to find what the model really accepts.
+
+The probe puts a random marker at the start of the message, pads the middle with filler, and asks the model to echo the marker at the end; a correct echo means the whole input was seen. It starts from one filler block, sizes the ceiling from the advertised window (or the request `upper`), and bisects in at most eight steps by default. Every step is a real upstream call that spends free quota, so trigger it per model only when needed.
+
+The result reports the measured ceiling in tokens (preferring the upstream's `usage.prompt_tokens`) with a per-step breakdown; if the model still recalls the marker at the ceiling, raise `upper`. Put the measured value into `models.context` to correct discovery. The probe runs through normal routing, so the anonymous lane, key selection, request shaping, and retries behave exactly as for a real request; non-chat protocols such as System One are not supported.
+
+Administration endpoints (login required; writes also require CSRF): `GET /api/models/availability`, `POST /api/models/restore` with `{"model":"MODEL_ID"}` (restores and takes manual control), `POST /api/models/manual` with `{"model":"MODEL_ID","manual":true|false}` to switch between manual and automatic control, `POST /api/models/context-probe` with `{"model":"MODEL_ID","lower":1,"upper":0,"max_steps":8}` to measure the context window (`lower`, `upper`, and `max_steps` may be omitted), and `POST /api/models/context` with `{"model":"MODEL_ID","context":1000000}` to set an override (omit `context` or send `0` to clear it).
+
+### Model manager view
+
+The WebUI **Model manager** page (`#/registry/status`) brings the upstream pools and the model list together:
+
+- **Upstream pools**: the Zen and Go keys (masked suffix and cooldown state only) plus whether the anonymous lane is available and which proxies it exits through.
+- **Automatic tags**: derived from routing eligibility — `Go` (served by the Go pool), `Zen` (Zen pool or public credential), `Free` (`free` in the ID), and `anonymous` (zero-price, eligible for the keyless lane). Models can be filtered by tag.
+- **Grouping**: grouped by upstream pool by default (Go pool / Zen pool / anonymous lane / other), or ungrouped.
+- **Context**: shows the window `/v1/models` currently advertises and labels its source (override / capability catalog / models.dev / unknown). Edit the override inline and save, or click **Clear** to fall back to the published value.
+- **Measure**: each row can **Measure context**; once measured, **Fill** drops the measured value into the override input, and saving applies it.
+
+The models, tags, and context source come from the `context` object (`window`, `max_input`, `max_output`, `source`, `override`) on each model in the `GET /api/debug/models` response.
 
 ### Sessions and proxies
 
@@ -262,6 +296,7 @@ See [config.example.json](config.example.json) for a complete starting configura
 | `proxyfile`                 | Optional; relative paths resolve beside the configuration file.             |
 | `models.refresh_seconds`    | `300`; minimum 1.                                                           |
 | `models.protocols`          | `{}`; per-model native protocol overrides.                                  |
+| `models.context`            | `{}`; per-model overrides of the advertised context window (tokens, positive integers). |
 | `reasoning.effort`          | Empty (off); `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `none`. |
 | `reasoning.effort_by_model` | `{}`; per-model overrides of `reasoning.effort`.                            |
 

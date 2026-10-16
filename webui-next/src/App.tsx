@@ -9,18 +9,20 @@ import { WorkspaceSkeleton } from '@/components/data-state'
 import { LoginPage } from '@/pages/login'
 const DiagnosticsPage = lazy(() => import('@/pages/diagnostics'))
 const ModelsPage = lazy(() => import('@/pages/models'))
+const ModelManagerPage = lazy(() => import('@/pages/model-manager'))
 const ObservabilityPage = lazy(() => import('@/pages/observability'))
 const OverviewPage = lazy(() => import('@/pages/overview'))
 const SystemPage = lazy(() => import('@/pages/system'))
 
 const redirects: Record<string, string> = {
-  overview: '/overview/status', guide: '/overview/checklist', access: '/overview/access', usage: '/observability/usage', playground: '/diagnostics/playground', diagnostics: '/diagnostics/routing', config: '/system/config', logs: '/observability/logs', account: '/system/account', 'model-quotas': '/models/catalog', 'api-keys': '/system/api-keys', rotation: '/models/rotation', availability: '/models/availability',
+  overview: '/overview/status', guide: '/overview/checklist', access: '/overview/access', usage: '/observability/usage', playground: '/diagnostics/playground', diagnostics: '/diagnostics/routing', config: '/system/config', logs: '/observability/logs', account: '/system/account', 'model-quotas': '/models/catalog', 'api-keys': '/system/api-keys', rotation: '/models/rotation', availability: '/models/availability', 'model-manager': '/registry/status',
 }
 
-type Workspace = 'overview' | 'models' | 'diagnostics' | 'observability' | 'system'
+type Workspace = 'overview' | 'models' | 'registry' | 'diagnostics' | 'observability' | 'system'
 const workspaceMeta: Record<Workspace, { title: string; description: string }> = {
   overview: { title: '总览', description: '检查运行状态、完成上线流程并复制接入示例。' },
   models: { title: '模型', description: '管理模型目录、额度、免费可用性与轮转策略。' },
+  registry: { title: '模型管理', description: '按上游池与标签分组查看模型，校正被虚报的上下文窗口并实测真实上限。' },
   diagnostics: { title: '诊断', description: '发送诊断请求，理解模型规则与实际上游链路。' },
   observability: { title: '观测', description: '查看 Token 使用趋势与实时结构化事件。' },
   system: { title: '系统', description: '维护网关配置、访问密钥与管理账号。' },
@@ -109,6 +111,7 @@ export default function App() {
         <Suspense fallback={<WorkspaceSkeleton />}>
           {workspace === 'overview' ? <OverviewPage context={context} /> : null}
           {workspace === 'models' ? <ModelsPage context={context} /> : null}
+          {workspace === 'registry' ? <ModelManagerPage context={context} /> : null}
           {workspace === 'diagnostics' ? <DiagnosticsPage context={context} /> : null}
           {workspace === 'observability' ? <ObservabilityPage context={context} /> : null}
           {workspace === 'system' ? <SystemPage context={context} /> : null}

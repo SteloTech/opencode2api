@@ -45,7 +45,22 @@ type RouteDiagnostic struct {
 	Attempts             int                           `json:"attempts,omitempty"`
 	KeyTiers             []config.Tier                 `json:"key_tiers,omitempty"`
 	AnonymousEligibility AnonymousDecision             `json:"anonymous_eligibility"`
+	Context              ContextInfo                   `json:"context"`
 	RouteError           string                        `json:"route_error,omitempty"`
+}
+
+// ContextInfo describes the context window the gateway advertises for a model
+// and which layer supplied it. The WebUI shows it and lets an operator correct
+// a window the published catalog gets wrong. Routing never reads it.
+type ContextInfo struct {
+	Window    int `json:"window,omitempty"`
+	MaxInput  int `json:"max_input,omitempty"`
+	MaxOutput int `json:"max_output,omitempty"`
+	// Source is one of override, catalog, models_dev, or none.
+	Source string `json:"source"`
+	// Override carries the configured models.context value when one is set, so
+	// the UI can distinguish "advertised" from "operator-corrected".
+	Override *int `json:"override,omitempty"`
 }
 
 type Catalog struct {
@@ -58,6 +73,11 @@ type Catalog struct {
 	nativeProtocols map[config.Tier]map[string]wire.Protocol
 	unsupported     map[config.Tier]map[string]bool
 	modelMeta       map[config.Tier]map[string]Metadata
+	// contextOverride corrects the context window advertised for a model when
+	// the published catalog value does not match what the upstream serves. It
+	// wins over both the capability catalog and models.dev. nil means "no
+	// overrides"; routing never reads it.
+	contextOverride map[string]int
 	updatedAt       time.Time
 	prefer          config.Tier
 	pricing         *PricingStore
@@ -96,6 +116,22 @@ func (c *Catalog) SetPricingStore(store *PricingStore) {
 	c.mu.Lock()
 	c.pricing = store
 	c.mu.Unlock()
+}
+
+// SetContextOverrides installs the operator's per-model context windows. An
+// empty map clears them. The values only affect /v1/models discovery output.
+func (c *Catalog) SetContextOverrides(overrides map[string]int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(overrides) == 0 {
+		c.contextOverride = nil
+		return
+	}
+	copied := make(map[string]int, len(overrides))
+	for model, window := range overrides {
+		copied[model] = window
+	}
+	c.contextOverride = copied
 }
 
 func (c *Catalog) SetAvailabilityStore(store *AvailabilityStore) {
@@ -373,13 +409,24 @@ func (c *Catalog) Diagnostic(model string, requested wire.Protocol, hasZenKeys, 
 	route, err := c.Route(model, hasZenKeys, hasGoKeys, hasAnonymous)
 	if err != nil {
 		diagnostic.RouteError = err.Error()
+		diagnostic.Context = c.ContextInfoForTier(model, c.preferredTier())
 		return diagnostic
 	}
 	diagnostic.NativeProtocol = route.Protocol
 	diagnostic.NativeProtocols = route.Protocols
 	diagnostic.Tier, diagnostic.Anonymous = route.Tier, route.Anonymous
 	diagnostic.KeyTiers = append([]config.Tier(nil), route.KeyTiers...)
+	diagnostic.Context = c.ContextInfoForTier(model, route.Tier)
 	return diagnostic
+}
+
+// preferredTier is the tier MetadataForTier falls back to when no route could
+// be built (an unavailable model still reports the preferred tier's limits).
+func (c *Catalog) preferredTier() config.Tier {
+	if c.prefer == config.TierGo {
+		return config.TierGo
+	}
+	return config.TierZen
 }
 
 func isFreeModel(model string) bool {
@@ -465,33 +512,61 @@ func (c *Catalog) Supported(model string) bool {
 // different limits per tier, so callers must pass route.Tier — never a
 // tier-blind lookup. Anonymous routes always resolve to TierZen, which keeps
 // the keyless path on Zen metadata. Limits the catalog omitted are filled from
-// models.dev; capability flags always come from the catalog. The zero value is
-// returned for models neither source describes (or before the first refresh).
+// models.dev; capability flags always come from the catalog. A configured
+// models.context entry wins over both. The zero value is returned for models
+// neither source describes (or before the first refresh).
 func (c *Catalog) MetadataForTier(model string, tier config.Tier) Metadata {
+	md, _, _ := c.metadataWithContext(model, tier)
+	return md
+}
+
+// ContextInfoForTier reports the advertised context window for a model together
+// with the layer that supplied it: the operator's models.context override, the
+// OpenCode capability catalog, or models.dev pricing metadata. It mirrors what
+// MetadataForTier resolves so the WebUI can display and correct the number.
+func (c *Catalog) ContextInfoForTier(model string, tier config.Tier) ContextInfo {
+	md, source, override := c.metadataWithContext(model, tier)
+	return ContextInfo{
+		Window: md.ContextWindow, MaxInput: md.MaxInput, MaxOutput: md.MaxOutput,
+		Source: source, Override: override,
+	}
+}
+
+func (c *Catalog) metadataWithContext(model string, tier config.Tier) (Metadata, string, *int) {
 	c.mu.RLock()
 	md := c.modelMeta[tier][model]
 	pricing := c.pricing
+	override, hasOverride := c.contextOverride[model]
 	c.mu.RUnlock()
-	if pricing == nil {
-		return md
-	}
-	price, ok := pricing.Price(model)
-	if !ok {
-		return md
-	}
 	// OpenCode's capability catalog is authoritative. Use models.dev limits
 	// only to fill fields it omitted so discovery clients still get per-model
 	// context and output limits.
-	if md.ContextWindow == 0 {
-		md.ContextWindow = price.ContextWindow
+	source := "none"
+	if md.ContextWindow > 0 {
+		source = "catalog"
 	}
-	if md.MaxInput == 0 {
-		md.MaxInput = price.MaxInput
+	if pricing != nil {
+		if price, ok := pricing.Price(model); ok {
+			if md.ContextWindow == 0 {
+				md.ContextWindow = price.ContextWindow
+				if md.ContextWindow > 0 {
+					source = "models_dev"
+				}
+			}
+			if md.MaxInput == 0 {
+				md.MaxInput = price.MaxInput
+			}
+			if md.MaxOutput == 0 {
+				md.MaxOutput = price.MaxOutput
+			}
+		}
 	}
-	if md.MaxOutput == 0 {
-		md.MaxOutput = price.MaxOutput
+	if !hasOverride {
+		return md, source, nil
 	}
-	return md
+	md.ContextWindow = override
+	value := override
+	return md, "override", &value
 }
 
 func (c *Catalog) supportedLocked(model string) bool {

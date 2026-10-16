@@ -196,6 +196,20 @@ System One 将自由文本状态与类型化问题配对，并返回类型化答
 
 协议值仅允许 `chat`、`responses`、`anthropic`。使用不支持的原生协议的模型会从模型列表中隐藏，除非配置了覆盖值。
 
+上下文窗口同样来自能力目录（缺失时用 models.dev 补全）。若上游免费通道实际可用窗口与公布值不符，可用 `models.context` 按模型 ID 覆盖 `/v1/models` 暴露的 `context_window` / `context_length`（单位 tokens，正整数）：
+
+```json
+{
+  "models": {
+    "context": {
+      "glm-5.3-flash-free": 65536
+    }
+  }
+}
+```
+
+该值只影响发现输出，网关不校验也不截断请求，因此上游仍可能拒绝或截断超限输入；它优先级最高，覆盖能力目录与 models.dev，留空表示不覆盖。可先用下面的「上下文实测」得到真实窗口，再据此填写。
+
 成本、弃用信息及模型限制来自官方 [OpenCode 元数据地址](https://models.opencode.ai/api.json)，每 24 小时刷新一次。能力目录中的限制优先；元数据中的 `limit.context`、`limit.input` 和 `limit.output` 仅补充缺失字段，通过 `/v1/models` 的 `context_window` / `context_length`、`max_input`、`max_output` 暴露。每个 HTTP 客户端的拉取超时为 30 秒，刷新失败时保留已有数据。升级后继续兼容原有 `.models.dev.json` 缓存文件名，无需删除缓存。
 
 ### 匿名通道与回退
@@ -231,7 +245,27 @@ System One 使用原生 `noul` 类型询问“1+1 是否等于 2”，不注入�
 
 状态保存在 `config.json.<上游地址指纹>.availability.json`，重启后保留，按 Zen 上游 URL 隔离。后台每分钟检查到期项，跳过手动控制的模型，串行探测其余模型，每条通道最多等待 60 秒。
 
-管理接口：`GET /api/models/availability` 查看状态；`POST /api/models/restore` 携带 `{"model":"MODEL_ID"}` 恢复并进入手动控制；`POST /api/models/manual` 携带 `{"model":"MODEL_ID","manual":true|false}` 在手动与自动之间切换。均需管理登录，写入接口还需 CSRF 校验。
+### 上下文实测
+
+公布值只是上游的声明，免费通道可能实际只服务更小的窗口，或直接丢弃超限部分而不报错。WebUI「免费模型可用性」页每个模型旁的「实测上下文」会对该模型做一次二分探测，测出它实际能接受的输入规模。
+
+探测在消息开头放一个随机标记，中间用填充内容撑大，末尾要求模型原样复述标记：能召回即说明整段输入都被看到。它从 1 个填充块起，按公布窗口（或请求中的 `upper`）估算上限并二分，默认最多 8 步。每一步都是一次真实上游调用，会消耗免费额度，因此仅在需要时对单个模型触发。
+
+结果给出实测可接受上限（tokens，优先取上游返回的 `usage.prompt_tokens`）与每一步的明细；若在探测上限仍成功，会提示提高 `upper`。把实测值填入 `models.context` 即可修正对外公布值。该探测经正常网关路由，匿名通道、Key 选择、请求整形与重试行为与真实请求一致；System One 等非聊天协议模型不适用。
+
+管理接口：`GET /api/models/availability` 查看状态；`POST /api/models/restore` 携带 `{"model":"MODEL_ID"}` 恢复并进入手动控制；`POST /api/models/manual` 携带 `{"model":"MODEL_ID","manual":true|false}` 在手动与自动之间切换；`POST /api/models/context-probe` 携带 `{"model":"MODEL_ID","lower":1,"upper":0,"max_steps":8}` 实测上下文（`lower`/`upper`/`max_steps` 可省略）；`POST /api/models/context` 携带 `{"model":"MODEL_ID","context":1000000}` 写入覆盖，`context` 省略或为 0 时清除覆盖。均需管理登录，写入接口还需 CSRF 校验。
+
+### 模型管理视图
+
+WebUI 侧边栏的「模型管理」页把上游池与模型放在一起查看与编辑：
+
+- **上游池**：分别列出 Zen 池、Go 池的 Key（仅显示尾码与冷却状态）和匿名通道是否符合条件、经哪些代理出口。
+- **自动标签**：按路由资格为每个模型生成标签——`Go`（Go 池可服务）、`Zen`（Zen 池或公共凭证）、`Free`（ID 含 free）、`匿名`（零价、符合匿名资格）。可按标签筛选。
+- **分组**：默认按上游池分组（Go 池 / Zen 池 / 匿名通道 / 其它），也可切换为不分组。
+- **上下文**：显示 `/v1/models` 当前暴露的窗口，并标注来源（手工覆盖 / 能力目录 / models.dev / 未知）。可直接在行内输入覆盖值并保存，或点「清除」恢复公布值。
+- **实测**：每行可「实测上下文」，测出后点「填入」把实测值放进覆盖输入框，确认后保存即可修正对外公布值。
+
+该视图的模型、标签、上下文来源来自 `GET /api/debug/models` 返回的每个模型的 `context` 字段（含 `window`、`max_input`、`max_output`、`source`、`override`）。
 
 ### 会话与代理
 
@@ -262,6 +296,7 @@ Key 初始化时均衡分配到代理。真实流量可以触发代理检查、K
 | `proxyfile`                 | 可选；相对路径基于配置文件所在目录解析。                                              |
 | `models.refresh_seconds`    | `300`；最小为 1。                                                                     |
 | `models.protocols`          | `{}`；按模型 ID 覆盖原生协议。                                                        |
+| `models.context`            | `{}`；按模型 ID 覆盖 `/v1/models` 暴露的上下文窗口（tokens，正整数）。                 |
 | `reasoning.effort`          | 空（关闭）；可选 `auto`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max`、`none`。 |
 | `reasoning.effort_by_model` | `{}`；按模型 ID 覆盖 `reasoning.effort`。                                             |
 

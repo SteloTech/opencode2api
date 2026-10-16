@@ -1,4 +1,4 @@
-import { Activity, Gauge, RefreshCw, Settings, Stethoscope } from 'lucide-react'
+import { Activity, Gauge, Layers, RefreshCw, Settings, Stethoscope } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 const items = [
   { key: 'overview', label: '总览', icon: Gauge },
   { key: 'models', label: '模型', icon: Activity },
+  { key: 'registry', label: '模型管理', icon: Layers },
   { key: 'diagnostics', label: '诊断', icon: Stethoscope },
   { key: 'observability', label: '观测', icon: Gauge },
   { key: 'system', label: '系统', icon: Settings },

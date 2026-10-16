@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { localTime } from '@/lib/format'
-import type { QuotaData, RotationData } from '@/lib/types'
+import type { ContextProbeResult, QuotaData, RotationData } from '@/lib/types'
 
 const rotationReasons: Record<string, string> = {
   success: '成功', client_canceled: '调用方取消', quota_or_rate_limit: '额度不足 / 限流', transport_error: '连接错误', first_output_timeout: '首个输出超时', stream_error: '输出中断', response_read_error: '读取响应失败', response_conversion_error: '响应解析或转换失败', request_conversion_error: '请求转换失败', upstream_error: '上游错误',
@@ -52,6 +52,19 @@ export function ModelsPage({ context }: { context: AppContext }) {
   const [availability, setAvailability] = useState(context.availability)
   const [availabilityLoading, setAvailabilityLoading] = useState(false)
   const [availabilityError, setAvailabilityError] = useState('')
+  const [probes, setProbes] = useState<Record<string, ContextProbeResult>>({})
+  const [probing, setProbing] = useState('')
+
+  const runProbe = async (model: string) => {
+    if (probing) return
+    setProbing(model)
+    try {
+      const result = await context.request<ContextProbeResult>('/api/models/context-probe', { method: 'POST', body: JSON.stringify({ model }) })
+      setProbes((current) => ({ ...current, [model]: result }))
+      if (result.measured) toast.success(`${model} 实测可接受上限约 ${result.measured} tokens`)
+      else toast.message(result.message || '实测未得到结果')
+    } catch (error) { toast.error((error as Error).message) } finally { setProbing('') }
+  }
 
   const loadQuota = async () => {
     setQuotaLoading(true)
@@ -165,7 +178,10 @@ export function ModelsPage({ context }: { context: AppContext }) {
             >
               {availability.length ? availability.map((item) => (
                 <TableRow key={item.model}>
-                  <TableCell className="font-mono whitespace-normal break-words">{item.model}</TableCell>
+                  <TableCell className="font-mono whitespace-normal break-words">
+                    <span className="block">{item.model}</span>
+                    {probes[item.model] ? <span className="mt-1 block text-xs font-normal text-muted-foreground">实测 {probes[item.model].measured ? `≈ ${probes[item.model].measured}` : '—'} tokens{probes[item.model].reached_upper ? '（≥ 探测上限）' : ''}</span> : null}
+                  </TableCell>
                   <TableCell><StatusBadge tone={item.disabled ? 'danger' : item.reason === 'probe_succeeded' ? 'success' : 'warning'}>{item.disabled ? '已禁用' : item.reason === 'probe_succeeded' ? '探测成功' : '探测未确认'}</StatusBadge></TableCell>
                   <TableCell className="whitespace-normal">{[item.channel, availabilityReasons[item.reason || ''] || item.reason].filter(Boolean).join(' / ') || '待探测'}</TableCell>
                   <TableCell><StatusBadge tone={item.manual ? 'warning' : 'neutral'}>{item.manual ? '手动锁定' : '自动探测'}</StatusBadge></TableCell>
@@ -174,6 +190,7 @@ export function ModelsPage({ context }: { context: AppContext }) {
                   <TableCell className="font-mono text-xs leading-relaxed">{(item.manual ? '手动控制' : localTime(item.next_check)).split(" ").map((part, index) => <span key={index} className="block">{part}</span>)}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
+                      <Button variant="outline" size="xs" disabled={probing !== '' || item.disabled} onClick={() => void runProbe(item.model)}>{probing === item.model ? '实测中…' : '实测上下文'}</Button>
                       <Button variant="ghost" size="xs" disabled={!item.disabled} onClick={async () => { await context.request('/api/models/restore', { method: 'POST', body: JSON.stringify({ model: item.model }) }); await loadAvailability(); await context.loadDebug(); }}>恢复启用</Button>
                       <Button variant="outline" size="xs" onClick={async () => { await context.request('/api/models/manual', { method: 'POST', body: JSON.stringify({ model: item.model, manual: !item.manual }) }); await loadAvailability(); await context.loadDebug(); }}>{item.manual ? '切回自动' : '切为手动'}</Button>
                     </div>

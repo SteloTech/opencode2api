@@ -22,7 +22,7 @@ export interface Config {
   proxyfile?: string
   upstream?: { zen?: string; go?: string }
   retry?: { max_attempts?: number; timeout_seconds?: number }
-  models?: { refresh_seconds?: number; protocols?: Record<string, string> }
+  models?: { refresh_seconds?: number; protocols?: Record<string, string>; context?: Record<string, number> }
   reasoning?: { effort?: string; effort_by_model?: Record<string, string> }
   performance?: {
     max_idle_conns?: number
@@ -62,8 +62,10 @@ export interface MonitorData {
     }>
   }
   resources: {
-    proxies?: Array<{ display?: string; healthy?: boolean; bound?: string }>
-    keys?: Array<{ display?: string; tier?: string; cooling?: boolean }>
+    proxies?: Array<{ display?: string; healthy?: boolean; bound?: string; index?: number; address?: string; checking?: boolean; zen_keys?: number; go_keys?: number; anonymous?: boolean }>
+    keys?: Array<{ display?: string; tier?: string; cooling?: boolean; id?: string; index?: number; proxy_index?: number; failures?: number; cooldown_until?: string }>
+    models?: { zen?: number; go?: number; total?: number; exposed?: number; updated_at?: string; cache_source?: string; stale?: boolean }
+    anonymous?: boolean
     metadata?: Metadata
   }
   usage?: {
@@ -97,6 +99,14 @@ export interface Metadata {
   last_error?: string
 }
 
+export interface ModelContextInfo {
+  window?: number
+  max_input?: number
+  max_output?: number
+  source: 'override' | 'catalog' | 'models_dev' | 'none' | string
+  override?: number
+}
+
 export interface DebugModel {
   model: string
   native_protocol: string
@@ -105,7 +115,9 @@ export interface DebugModel {
   available_go?: boolean
   available_zen?: boolean
   key_tiers?: string[]
+  tier?: string
   route_error?: string
+  context?: ModelContextInfo
   anonymous_eligibility?: {
     allowed?: boolean
     source?: string
@@ -117,6 +129,9 @@ export interface DebugModel {
 export interface DebugKey {
   id: string
   display: string
+  tier?: string
+  index?: number
+  failures?: number
   cooldown_until?: string
 }
 
@@ -249,4 +264,24 @@ export interface AvailabilityModel {
   next_check?: string
   auto_effort?: { effort?: string }
   effort_checked_at?: string
+}
+
+export interface ContextProbeStep {
+  blocks: number
+  approx_tokens: number
+  prompt_tokens?: number
+  ok: boolean
+  http_status: number
+  reason?: string
+  duration_ms: number
+}
+
+export interface ContextProbeResult {
+  model: string
+  advertised?: number
+  measured?: number
+  reached_upper?: boolean
+  tokens_per_block?: number
+  steps?: ContextProbeStep[]
+  message?: string
 }

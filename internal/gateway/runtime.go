@@ -416,6 +416,23 @@ func (m *RuntimeManager) DebugKey(tier config.Tier, id string) *DebugKeyView {
 	return nil
 }
 
+// AdvertisedContextWindow returns the context window the gateway currently
+// reports for a model through /v1/models, or 0 when neither the capability
+// catalog nor a configured override provides one. It mirrors what a discovery
+// client would read, so a context probe can start from the published number.
+func (m *RuntimeManager) AdvertisedContextWindow(model string) int {
+	runtime := m.current.Load()
+	if runtime == nil {
+		return 0
+	}
+	gateway := runtime.gateway
+	route, err := gateway.catalog.Route(model, len(gateway.cfg.ZenKeys) > 0, len(gateway.cfg.GoKeys) > 0, gateway.cfg.Anonymous)
+	if err != nil {
+		return 0
+	}
+	return gateway.catalog.MetadataForTier(model, route.Tier).ContextWindow
+}
+
 // DebugRouteForTier reports the route a diagnostic against one tier would take.
 func (m *RuntimeManager) DebugRouteForTier(model string, tier config.Tier) (modelcatalog.RouteDiagnostic, error) {
 	runtime := m.current.Load()

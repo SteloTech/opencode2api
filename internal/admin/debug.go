@@ -42,14 +42,21 @@ type DebugInferenceResult struct {
 }
 
 func (a *Server) handleDebugModels(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.WriteJSON(w, http.StatusOK, a.debugModelsPayload())
+}
+
+// debugModelsPayload builds the shared model-diagnostics response. It is reused
+// by the focused context-override endpoint so a save can return the refreshed
+// view in the same round trip.
+func (a *Server) debugModelsPayload() map[string]any {
 	models, metadata := a.manager.DebugModels()
 	catalog := a.manager.Resources().Models
 	keys := a.manager.DebugKeys()
 	a.mu.Lock()
 	last := a.lastInference
 	a.mu.Unlock()
-	w.Header().Set("Cache-Control", "no-store")
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"models": models, "keys": keys, "metadata": metadata, "catalog": catalog, "last_inference": last})
+	return map[string]any{"models": models, "keys": keys, "metadata": metadata, "catalog": catalog, "last_inference": last}
 }
 
 func (a *Server) handleDebugInference(w http.ResponseWriter, r *http.Request) {
